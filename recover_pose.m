@@ -16,7 +16,7 @@ secret_pose_delta = [0, 0, 0, 0, 0, 0.1];
 % Show these points
 hold on;
 % Plot axes for the origin
-plot_coord_frame(eye(4));
+plot_coord_frame('', eye(4));
 % 3D
 for i = 1:size(cad_points, 1)
     ith = cad_points(i, :);
