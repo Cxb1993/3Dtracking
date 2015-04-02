@@ -1,0 +1,201 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Analytical Measurement Model of a CAD Model Point on a 2D Plane</title><meta name="generator" content="MATLAB 8.1"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-11-11"><meta name="DC.source" content="analytical_model.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, tt, code { font-size:12px; }
+pre { margin:0px 0px 20px; }
+pre.error { color:red; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Analytical Measurement Model of a CAD Model Point on a 2D Plane</h1><!--introduction--><p>DESCRIPTIVE TEXT</p><p>Inspired by centroidMeasurementModel.m, by George Kantor</p><p>Originally, a script to check roll-pitch yaw convention and compute berm centroid measurement model</p><!--/introduction--><p>We will Note that: (phi=roll), (theta=pitch), (psi=yaw)</p><pre class="codeinput"><span class="comment">% pose of model; these are known values</span>
+syms <span class="string">theta</span> <span class="string">phi</span> <span class="string">psi</span>
+syms <span class="string">pose_x</span> <span class="string">pose_y</span> <span class="string">pose_z</span>
+
+<span class="comment">% f is the focal length of the camera</span>
+syms <span class="string">f</span>
+
+<span class="comment">% points in model frame; these are known values</span>
+syms <span class="string">off_x</span> <span class="string">off_y</span> <span class="string">off_z</span>
+
+
+p = [off_x; off_y; off_z];
+
+<span class="comment">% define single axis rotation about phi, theta, psi</span>
+Rx = [1  0   0
+      0 cos(phi) -sin(phi)
+      0 sin(phi) cos(phi)];
+Ry = [cos(theta)  0 sin(theta)
+       0  1  0
+     -sin(theta)  0 cos(theta)];
+Rz = [cos(psi) -sin(psi)  0
+      sin(psi)  cos(psi)  0
+       0   0  1];
+
+d_b_to_c = [pose_x; pose_y; pose_z];
+<span class="comment">% assume RPY means roll then pitch then yaw relative to fixed frame</span>
+<span class="comment">%  ==&gt; get overall rotation by multiplying successively on left</span>
+R_from_b_to_c = Rz * Ry * Rx;
+
+p_c = R_from_b_to_c*p + d_b_to_c;
+
+<span class="comment">% Camera Matrix</span>
+<span class="comment">% Assuming a pinhole model for a camera, with a focal length f</span>
+
+p_cx = p_c(1);
+p_cy = p_c(2);
+p_cz = p_c(3);
+
+<span class="comment">% Get the final measurement model</span>
+measurement_model = f .* [ p_cx / p_cz, p_cy / p_cz]
+
+<span class="comment">% Print out full jacobian</span>
+jacobian_of_measurement_mode = <span class="keyword">...</span>
+    jacobian(measurement_model, [theta, phi, psi, pose_x, pose_y, pose_z])
+
+<span class="comment">% Print out jacobian w.r.t. Z.</span>
+y_new = subs(measurement_model, Rx, eye(3));
+y_new = subs(y_new, Ry, eye(3));
+jacobian_with_no_xy_rotation = <span class="keyword">...</span>
+    jacobian(y_new, [theta, phi, psi, pose_x, pose_y, pose_z])
+</pre><pre class="codeoutput"> 
+measurement_model =
+ 
+[ (f*(pose_x - off_y*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta)) + off_z*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) + off_x*cos(psi)*cos(theta)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)), (f*(pose_y + off_y*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta)) - off_z*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_x*cos(theta)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))]
+ 
+ 
+jacobian_of_measurement_mode =
+ 
+[ (f*(off_z*cos(phi)*cos(psi)*cos(theta) - off_x*cos(psi)*sin(theta) + off_y*cos(psi)*cos(theta)*sin(phi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)) + (f*(off_x*cos(theta) + off_z*cos(phi)*sin(theta) + off_y*sin(phi)*sin(theta))*(pose_x - off_y*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta)) + off_z*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) + off_x*cos(psi)*cos(theta)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2,   (f*(off_y*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) + off_z*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta))))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)) - (f*(off_y*cos(phi)*cos(theta) - off_z*cos(theta)*sin(phi))*(pose_x - off_y*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta)) + off_z*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) + off_x*cos(psi)*cos(theta)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2, -(f*(off_y*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta)) - off_z*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_x*cos(theta)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)), f/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)),                                                                                     0, -(f*(pose_x - off_y*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta)) + off_z*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) + off_x*cos(psi)*cos(theta)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2]
+[ (f*(off_z*cos(phi)*cos(theta)*sin(psi) - off_x*sin(psi)*sin(theta) + off_y*cos(theta)*sin(phi)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)) + (f*(off_x*cos(theta) + off_z*cos(phi)*sin(theta) + off_y*sin(phi)*sin(theta))*(pose_y + off_y*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta)) - off_z*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_x*cos(theta)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2, - (f*(off_y*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_z*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta))))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)) - (f*(off_y*cos(phi)*cos(theta) - off_z*cos(theta)*sin(phi))*(pose_y + off_y*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta)) - off_z*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_x*cos(theta)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2,  (f*(off_z*(sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta)) - off_y*(cos(phi)*sin(psi) - cos(psi)*sin(phi)*sin(theta)) + off_x*cos(psi)*cos(theta)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)),                                                                                     0, f/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi)), -(f*(pose_y + off_y*(cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta)) - off_z*(cos(psi)*sin(phi) - cos(phi)*sin(psi)*sin(theta)) + off_x*cos(theta)*sin(psi)))/(pose_z - off_x*sin(theta) + off_z*cos(phi)*cos(theta) + off_y*cos(theta)*sin(phi))^2]
+ 
+ 
+jacobian_with_no_xy_rotation =
+ 
+[ 0, 0, -(f*(off_y*cos(psi) + off_x*sin(psi)))/(off_z + pose_z), f/(off_z + pose_z),                  0, -(f*(pose_x + off_x*cos(psi) - off_y*sin(psi)))/(off_z + pose_z)^2]
+[ 0, 0,  (f*(off_x*cos(psi) - off_y*sin(psi)))/(off_z + pose_z),                  0, f/(off_z + pose_z), -(f*(pose_y + off_y*cos(psi) + off_x*sin(psi)))/(off_z + pose_z)^2]
+ 
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2013a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Analytical Measurement Model of a CAD Model Point on a 2D Plane
+% DESCRIPTIVE TEXT
+% 
+% Inspired by centroidMeasurementModel.m, by George Kantor
+% 
+% Originally, a script to check roll-pitch yaw convention and 
+% compute berm centroid measurement model
+
+
+%% 
+% We will 
+% Note that: (phi=roll), (theta=pitch), (psi=yaw)
+
+% pose of model; these are known values
+syms theta phi psi
+syms pose_x pose_y pose_z
+
+% f is the focal length of the camera
+syms f
+
+% points in model frame; these are known values
+syms off_x off_y off_z
+
+
+p = [off_x; off_y; off_z];
+
+% define single axis rotation about phi, theta, psi
+Rx = [1  0   0
+      0 cos(phi) -sin(phi)
+      0 sin(phi) cos(phi)];
+Ry = [cos(theta)  0 sin(theta)
+       0  1  0
+     -sin(theta)  0 cos(theta)];
+Rz = [cos(psi) -sin(psi)  0
+      sin(psi)  cos(psi)  0
+       0   0  1];
+
+d_b_to_c = [pose_x; pose_y; pose_z];
+% assume RPY means roll then pitch then yaw relative to fixed frame
+%  ==> get overall rotation by multiplying successively on left
+R_from_b_to_c = Rz * Ry * Rx;
+
+p_c = R_from_b_to_c*p + d_b_to_c;
+
+% Camera Matrix
+% Assuming a pinhole model for a camera, with a focal length f
+
+p_cx = p_c(1);
+p_cy = p_c(2); 
+p_cz = p_c(3);
+
+% Get the final measurement model
+measurement_model = f .* [ p_cx / p_cz, p_cy / p_cz]
+
+% Print out full jacobian
+jacobian_of_measurement_mode = ...
+    jacobian(measurement_model, [theta, phi, psi, pose_x, pose_y, pose_z])
+
+% Print out jacobian w.r.t. Z. 
+y_new = subs(measurement_model, Rx, eye(3));
+y_new = subs(y_new, Ry, eye(3));
+jacobian_with_no_xy_rotation = ...
+    jacobian(y_new, [theta, phi, psi, pose_x, pose_y, pose_z])
+##### SOURCE END #####
+--></body></html>
