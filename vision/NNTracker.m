@@ -51,6 +51,10 @@ classdef NNTracker < handle
             rectangle('Position', [obj.row-5, obj.col-5, 10, 10], 'LineWidth',2,...
             'EdgeColor', color);
         end
+        
+        function currentLocation = getHomCoords(obj)
+            currentLocation = [obj.row obj.col 1]';
+        end
     end
     
 end

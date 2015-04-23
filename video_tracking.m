@@ -1,5 +1,10 @@
-% Read the frames of the video
+% Perform tracking of an object in the video
 
+% Load camera stuff
+load('cameraParams', 'cameraParams');
+intrinsicParams = cameraParams.IntrinsicMatrix.';
+
+% Prepare video frame stuff
 vr = VideoReader('tracking_video.avi');
 
 vidWidth = vr.Width;
@@ -24,7 +29,7 @@ k = 1;
 j = 1;
 
 % Read the first frame, and initialize the trackers
-while hasFrame(vr) && k < 200
+while hasFrame(vr) && k < 160
    sampled_mov(k).cdata = imresize(readFrame(vr), [goalHeight goalWidth]);
    [BW, maskRGBImage] = pink_dot_mask(sampled_mov(k).cdata);
    
@@ -73,10 +78,17 @@ while hasFrame(vr) && k < 200
    br.addMeasurement(centroids(br_ind, :, j-1));
    br.draw('m');
    
-   %sampled_mov(k).cdata = maskRGBImage;
+   % Print out parameters
+   image_frame = tl.getHomCoords()
+   camera_frame = pinv(intrinsicParams) * tl.getHomCoords() / 1000
+   divided_frame = camera_frame ./ (camera_frame(3))
+   
+   % Update the pose
+   
+   
    k = k + 1
    
-   pause(0.01);
+   pause(0.5);
    
 end
 
