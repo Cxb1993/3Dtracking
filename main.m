@@ -78,4 +78,3 @@ for i = 1:size(pose_array, 2)
     
 end
 
-

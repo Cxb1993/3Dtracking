@@ -6,7 +6,7 @@ run('get_measurement_model');
 S = SampledObject;
 % In meters, of the given target
 % Recall this is ypr
-S.pose = [ 0.03, 0.008, 0.35, 0, 0, -0.03 ];
+S.pose = [ 0.035, -0.01, 0.35, 0, 0, pi ];
 % Demo: S.pose = [ 0.03, 0, 0.35, 0, 0, pi/6];
 % these are presumably in meters
 S.cad_points = [0.0,    0.085, 0;
@@ -49,11 +49,16 @@ centroids = [];
 
 
 % Initialize trackers
-tl = NNTracker(621, 384);
-tm = NNTracker(483, 391);
-tr = NNTracker(345, 392);
-bl = NNTracker(345, 119);
-br = NNTracker(619, 120);
+%tl = NNTracker(621, 384);
+%tm = NNTracker(483, 391);
+%tr = NNTracker(345, 392);
+%bl = NNTracker(619, 119);
+%br = NNTracker(345, 120);
+tl = NNTracker(345, 90);
+tm = NNTracker(482, 92);
+tr = NNTracker(618, 97);
+bl = NNTracker(353, 363);
+br = NNTracker(613, 361);
 
 
 k = 1;
@@ -61,7 +66,12 @@ j = 1;
 
 % Read the first frame, and initialize the trackers
 while hasFrame(vr) && k < 160
-   sampled_mov(k).cdata = imresize(readFrame(vr), [goalHeight goalWidth]);
+   sampled_mov(k).cdata = flipud(imresize(readFrame(vr), [goalHeight goalWidth]));
+   % Note that we have to flip the image about the Y, so that
+   %  we can have Y increase as we go up. 
+   %display_image = sampled_mov(k).cdata;
+   %work_image = sampled_mov(k).cdata;
+   
    [BW, maskRGBImage] = pink_dot_mask(sampled_mov(k).cdata);
    
    hold on;
@@ -113,23 +123,28 @@ while hasFrame(vr) && k < 160
    %  at some point early in the computation.
    % Update the pose
    believed_measurement = S.get_cad_points_in_image_frame(intrinsicParams);
-   new_measurement = [tm.getHomCoords(), tl.getHomCoords(), ...
-                        br.getHomCoords(), bl.getHomCoords(), ...
-                        tr.getHomCoords()];
+   %new_measurement = [tm.getHomCoords(), tl.getHomCoords(), ...
+   %                     tr.getHomCoords(), bl.getHomCoords(), ...
+   %                     br.getHomCoords()];
+   new_measurement = [  tl.getHomCoords(), tm.getHomCoords(), ...
+                        tr.getHomCoords(), bl.getHomCoords(), ...
+                        br.getHomCoords()];
   
-   % Find the difference between the associated measurements           
-   X1_tall = believed_measurement.';
-   X2_tall = new_measurement.';
+   % Find the difference between the associated measurements  
+   % Don't include Z. 
+   X1_tall = believed_measurement(1:2, :).';
+   X2_tall = new_measurement(1:2, :).';
    
    % Find the difference between the associated measurements
    X_diff = X2_tall - X1_tall;
    X_diff_tall = reshape(X_diff, numel(X_diff), 1);
    
    % Sub into Jacobian...for each one!
+    f = 0.0018; % 1 / 553;  % focal length
     tall_jacob = [];
     for i = 1:size(X1_tall, 1)
         tall_jacob = [tall_jacob; eval_proj_point(jacobian_of_measurement_model, ...
-            symbolics, 2, follower.pose', follower.cad_points(:, i)')];
+            symbolics, f, S.pose, S.cad_points(:, i)')];
     end
     
     % Find the pseudoinverse of the jacobian
@@ -138,12 +153,12 @@ while hasFrame(vr) && k < 160
     pinv_jacob = pinv(tall_jacob); % inv(tall_jacob.' * tall_jacob) * tall_jacob
     
     best_fit_pose_delta = pinv_jacob * X_diff_tall;
-    S.pose = S.pose + best_fit_pose_delta
+    S.pose = S.pose + best_fit_pose_delta';
     
     
     k = k + 1
    
-    pause(0.5);
+    pause(2);
    
 end
 
