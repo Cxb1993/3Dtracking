@@ -21,6 +21,7 @@ classdef SampledObject
         symbolics
         % the symbolics we need currently...
         % these should go away.
+        
     end
     
     methods
@@ -76,7 +77,7 @@ classdef SampledObject
             R = Rz * Ry * Rx;
             
             points_world_frame = zeros(size(obj.cad_points));
-            for i=1:size(obj.cad_points, 1)
+            for i=1:size(obj.cad_points, 2)
                 points_world_frame(:, i) = obj.pose(1:3);
                 points_world_frame(:, i) = points_world_frame(:,i) + R * obj.cad_points(:, i);
             end
@@ -135,6 +136,27 @@ classdef SampledObject
                 scatter3(fh.CurrentAxes, ith(1,:), ith(2,:), ith(3,:), 'blue');
             end
             hold off;
+        end
+        
+        function [cam_points] = get_cad_points_in_image_frame(obj, cameraInstrinsics)
+            cad_points_in_wframe = obj.get_cad_points_in_wframe();
+            cam_points = zeros(size(cad_points_in_wframe));
+            for i=1:size(cad_points_in_wframe, 2)
+                cam_points(:,i) = cameraInstrinsics * cad_points_in_wframe(:, i);
+                cam_points(:,i) = cam_points(:, i) / cam_points(3, i);
+            end
+        end    
+        
+        
+        function [] = draw_on_image(obj, cameraInstrinsics)
+            cad_points_in_wframe = obj.get_cad_points_in_wframe();
+            for i=1:size(cad_points_in_wframe, 2)
+                xyz = cameraInstrinsics * cad_points_in_wframe(:, i);
+                xyz_unhomog = xyz(1:2) / xyz(3);
+                rectangle('Position', [xyz_unhomog(1)-5, xyz_unhomog(2)-5, 10, 10], 'LineWidth',2,...
+            'EdgeColor', 'y');
+
+            end
         end
     end
     

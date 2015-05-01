@@ -1,17 +1,47 @@
 % Perform tracking of an object in the video
+addpath('vision', path);
+
+% Prepare the tracker. 
+run('get_measurement_model');
+S = SampledObject;
+% In meters, of the given target
+% Recall this is ypr
+S.pose = [ 0.03, 0.008, 0.35, 0, 0, -0.03 ];
+% Demo: S.pose = [ 0.03, 0, 0.35, 0, 0, pi/6];
+% these are presumably in meters
+S.cad_points = [0.0,    0.085, 0;
+                0.085,  0.085, 0;
+                -0.085, 0.085, 0;
+                -0.085, -0.085, 0;
+                0.085, -0.085, 0;
+                ]';
+
+%world_frame_points = S.project(0.0018);
 
 % Load camera stuff
-load('cameraParams', 'cameraParams');
-intrinsicParams = cameraParams.IntrinsicMatrix.';
+load('vision/cameraParams', 'cameraParams');
+%% TODO these instrinsics are made up to let me use weird image size.
+%intrinsicParams = cameraParams.IntrinsicMatrix.';
+intrinsicParams = [553.9621,    0, 853 / 2
+                        0,   552.4798, 480 / 2;
+                        0,        0,    1.0000];
+%intrinsicParams = [553.9621,    0,  319.7582
+%                        0,   552.4798, 180.8905;
+%                        0,        0,    1.0000];
+                    
+% Warp world frame points into the camera frame
+for i=1:size(cad_points_in_wframe, 2)
+    cad_points_in_wframe(:, i) = intrinsicParams * cad_points_in_wframe(:, i);
+end
 
 % Prepare video frame stuff
-vr = VideoReader('tracking_video.avi');
+vr = VideoReader('vision/tracking_video.avi');
 
 vidWidth = vr.Width;
 vidHeight = vr.Height;
 
-goalWidth = 640;
-goalHeight = 480;
+goalWidth = 853; % 1920/2.25 = 853.333 (kinda like 640)
+goalHeight = 1080/2.25;% 480
 
 sampled_mov = struct('cdata',zeros(goalHeight,goalWidth, 3, 'uint8'), ...
             'colormap', []);
@@ -19,11 +49,12 @@ centroids = [];
 
 
 % Initialize trackers
-tl = NNTracker(264, 391);
-tm = NNTracker(362, 389);
-tr = NNTracker(465, 385);
-bl = NNTracker(264, 118);
-br = NNTracker(461, 120);
+tl = NNTracker(621, 384);
+tm = NNTracker(483, 391);
+tr = NNTracker(345, 392);
+bl = NNTracker(345, 119);
+br = NNTracker(619, 120);
+
 
 k = 1;
 j = 1;
@@ -50,13 +81,8 @@ while hasFrame(vr) && k < 160
        
    end
    
-   % Plot each of the centroids
-   %plot(centroids(1, 1, j-1), centroids(1, 2, j-1), 's', 'MarkerFaceColor', 'm', 'LineWidth', 10);
-   %plot(centroids(2, 1, j-1), centroids(2, 2, j-1), 's', 'MarkerFaceColor', 'm', 'LineWidth', 10);
-   %plot(centroids(3, 1, j-1), centroids(3, 2, j-1), 's', 'MarkerFaceColor', 'm', 'LineWidth', 10);
-   %plot(centroids(4, 1, j-1), centroids(4, 2, j-1), 's', 'MarkerFaceColor', 'm', 'LineWidth', 10);
-   %plot(centroids(5, 1, j-1), centroids(5, 2, j-1), 's', 'MarkerFaceColor', 'm', 'LineWidth', 10);
-   
+   % Plot each of the 3D points as we see them
+   S.draw_on_image(intrinsicParams);
    % Update the tracked positions
    tl_ind = tl.findNearest(centroids(:, :, j-1));
    tl.addMeasurement(centroids(tl_ind, :, j-1));
@@ -83,12 +109,41 @@ while hasFrame(vr) && k < 160
    camera_frame = pinv(intrinsicParams) * tl.getHomCoords() / 1000
    divided_frame = camera_frame ./ (camera_frame(3))
    
+   % TODO there is a bug where one centroid jumps from one to the other
+   %  at some point early in the computation.
    % Update the pose
+   believed_measurement = S.get_cad_points_in_image_frame(intrinsicParams);
+   new_measurement = [tm.getHomCoords(), tl.getHomCoords(), ...
+                        br.getHomCoords(), bl.getHomCoords(), ...
+                        tr.getHomCoords()];
+  
+   % Find the difference between the associated measurements           
+   X1_tall = believed_measurement.';
+   X2_tall = new_measurement.';
    
+   % Find the difference between the associated measurements
+   X_diff = X2_tall - X1_tall;
+   X_diff_tall = reshape(X_diff, numel(X_diff), 1);
    
-   k = k + 1
+   % Sub into Jacobian...for each one!
+    tall_jacob = [];
+    for i = 1:size(X1_tall, 1)
+        tall_jacob = [tall_jacob; eval_proj_point(jacobian_of_measurement_model, ...
+            symbolics, 2, follower.pose', follower.cad_points(:, i)')];
+    end
+    
+    % Find the pseudoinverse of the jacobian
+    % Matrix is tall and skinny; use the Moor-Penrose Inverse
+    % J_# = (J.' * J)^-1 * J.';
+    pinv_jacob = pinv(tall_jacob); % inv(tall_jacob.' * tall_jacob) * tall_jacob
+    
+    best_fit_pose_delta = pinv_jacob * X_diff_tall;
+    S.pose = S.pose + best_fit_pose_delta
+    
+    
+    k = k + 1
    
-   pause(0.5);
+    pause(0.5);
    
 end
 
