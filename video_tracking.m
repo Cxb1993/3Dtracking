@@ -6,7 +6,7 @@ run('get_measurement_model');
 S = SampledObject;
 % In meters, of the given target
 % Recall this is ypr
-S.pose = [ 0.035, -0.01, 0.35, 0, 0, pi ];
+S.pose = [ 0.035, -0.01, 0.35, 0, 0, pi ]';
 % Demo: S.pose = [ 0.03, 0, 0.35, 0, 0, pi/6];
 % these are presumably in meters
 S.cad_points = [0.0,    0.085, 0;
@@ -29,11 +29,6 @@ intrinsicParams = [553.9621,    0, 853 / 2
 %                        0,   552.4798, 180.8905;
 %                        0,        0,    1.0000];
                     
-% Warp world frame points into the camera frame
-for i=1:size(cad_points_in_wframe, 2)
-    cad_points_in_wframe(:, i) = intrinsicParams * cad_points_in_wframe(:, i);
-end
-
 % Prepare video frame stuff
 vr = VideoReader('vision/tracking_video.avi');
 
@@ -94,24 +89,24 @@ while hasFrame(vr) && k < 160
    % Plot each of the 3D points as we see them
    S.draw_on_image(intrinsicParams);
    % Update the tracked positions
-   tl_ind = tl.findNearest(centroids(:, :, j-1));
-   tl.addMeasurement(centroids(tl_ind, :, j-1));
+   %tl_ind = tl.findNearest(centroids(:, :, j-1));
+   %tl.addMeasurement(centroids(tl_ind, :, j-1));
    tl.draw('b');   
 
-   tm_ind = tm.findNearest(centroids(:, :, j-1));
-   tm.addMeasurement(centroids(tm_ind, :, j-1));
+   %tm_ind = tm.findNearest(centroids(:, :, j-1));
+   %tm.addMeasurement(centroids(tm_ind, :, j-1));
    tm.draw('r');
    
-   tr_ind = tr.findNearest(centroids(:, :, j-1));
-   tr.addMeasurement(centroids(tr_ind, :, j-1));
+   %tr_ind = tr.findNearest(centroids(:, :, j-1));
+   %tr.addMeasurement(centroids(tr_ind, :, j-1));
    tr.draw('g');
    
-   bl_ind = bl.findNearest(centroids(:, :, j-1));
-   bl.addMeasurement(centroids(bl_ind, :, j-1));
+   %bl_ind = bl.findNearest(centroids(:, :, j-1));
+   %bl.addMeasurement(centroids(bl_ind, :, j-1));
    bl.draw('c');
    
-   br_ind = br.findNearest(centroids(:, :, j-1));
-   br.addMeasurement(centroids(br_ind, :, j-1));
+   %br_ind = br.findNearest(centroids(:, :, j-1));
+   %br.addMeasurement(centroids(br_ind, :, j-1));
    br.draw('m');
    
    % Print out parameters
@@ -122,18 +117,27 @@ while hasFrame(vr) && k < 160
    % TODO there is a bug where one centroid jumps from one to the other
    %  at some point early in the computation.
    % Update the pose
-   believed_measurement = S.get_cad_points_in_image_frame(intrinsicParams);
+   believed_measurement = S.get_cad_points_in_image_frame(intrinsicParams)
    %new_measurement = [tm.getHomCoords(), tl.getHomCoords(), ...
    %                     tr.getHomCoords(), bl.getHomCoords(), ...
    %                     br.getHomCoords()];
-   new_measurement = [  tl.getHomCoords(), tm.getHomCoords(), ...
-                        tr.getHomCoords(), bl.getHomCoords(), ...
-                        br.getHomCoords()];
+   new_measurement = [  tm.getHomCoords(), tr.getHomCoords(), ...
+                        tl.getHomCoords(), bl.getHomCoords(), ...
+                        br.getHomCoords()]
   
+   [distance_for_row, I] = pdist2(believed_measurement', new_measurement', 'euclidean', 'Smallest', 1);
+   assert(numel(unique(I)) == numel(I));
+   matched_new_measurements = believed_measurement(:, I)
+   
+   
    % Find the difference between the associated measurements  
    % Don't include Z. 
-   X1_tall = believed_measurement(1:2, :).';
+   % And match up the corresponding measurements.
+   %X1_tall = believed_measurement(1:2, :).';
+   X1_tall = matched_new_measurements(1:2, :).';
    X2_tall = new_measurement(1:2, :).';
+   
+   
    
    % Find the difference between the associated measurements
    X_diff = X2_tall - X1_tall;
@@ -144,7 +148,7 @@ while hasFrame(vr) && k < 160
     tall_jacob = [];
     for i = 1:size(X1_tall, 1)
         tall_jacob = [tall_jacob; eval_proj_point(jacobian_of_measurement_model, ...
-            symbolics, f, S.pose, S.cad_points(:, i)')];
+            symbolics, f, S.pose', S.cad_points(:, i)')];
     end
     
     % Find the pseudoinverse of the jacobian
@@ -153,7 +157,7 @@ while hasFrame(vr) && k < 160
     pinv_jacob = pinv(tall_jacob); % inv(tall_jacob.' * tall_jacob) * tall_jacob
     
     best_fit_pose_delta = pinv_jacob * X_diff_tall;
-    S.pose = S.pose + best_fit_pose_delta';
+    S.pose = S.pose + best_fit_pose_delta;
     
     
     k = k + 1
