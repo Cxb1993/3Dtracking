@@ -96,7 +96,7 @@ classdef SampledObject
             p(3, :) = f * point(3) / point(3);
         end
               
-        % projected_cad_points = 2xN point projections
+        % projected_cad_points `= 2xN point projections
         %  returns projected points in the world frame.
         function projected_cad_points = project(obj, focal_length)
             % TODO convert this into a math operation, not

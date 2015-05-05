@@ -89,24 +89,24 @@ while hasFrame(vr) && k < 160
    % Plot each of the 3D points as we see them
    S.draw_on_image(intrinsicParams);
    % Update the tracked positions
-   %tl_ind = tl.findNearest(centroids(:, :, j-1));
-   %tl.addMeasurement(centroids(tl_ind, :, j-1));
+   tl_ind = tl.findNearest(centroids(:, :, j-1));
+   tl.addMeasurement(centroids(tl_ind, :, j-1));
    tl.draw('b');   
 
-   %tm_ind = tm.findNearest(centroids(:, :, j-1));
-   %tm.addMeasurement(centroids(tm_ind, :, j-1));
+   tm_ind = tm.findNearest(centroids(:, :, j-1));
+   tm.addMeasurement(centroids(tm_ind, :, j-1));
    tm.draw('r');
    
-   %tr_ind = tr.findNearest(centroids(:, :, j-1));
-   %tr.addMeasurement(centroids(tr_ind, :, j-1));
+   tr_ind = tr.findNearest(centroids(:, :, j-1));
+   tr.addMeasurement(centroids(tr_ind, :, j-1));
    tr.draw('g');
    
-   %bl_ind = bl.findNearest(centroids(:, :, j-1));
-   %bl.addMeasurement(centroids(bl_ind, :, j-1));
+   bl_ind = bl.findNearest(centroids(:, :, j-1));
+   bl.addMeasurement(centroids(bl_ind, :, j-1));
    bl.draw('c');
    
-   %br_ind = br.findNearest(centroids(:, :, j-1));
-   %br.addMeasurement(centroids(br_ind, :, j-1));
+   br_ind = br.findNearest(centroids(:, :, j-1));
+   br.addMeasurement(centroids(br_ind, :, j-1));
    br.draw('m');
    
    % Print out parameters
@@ -157,17 +157,17 @@ while hasFrame(vr) && k < 160
     %pinv_jacob = pinv(tall_jacob); % inv(tall_jacob.' * tall_jacob) * tall_jacob
     
     %best_fit_pose_delta = tall_jacob \ X_diff_tall;
-    best_fit_pose_delta = fminunc(@(curr_pose),  )
+    best_fit_pose_delta = fminunc(@(guess_delta) my_optimization_fun(S, guess_delta,[tm, tr, ...
+                        tl, bl, br], intrinsicParams, jacobian_of_measurement_model, symbolics), [0, 0, 0, 0, 0, 0]'); 
     % TODO confirm that this makes sense:
     %    jacobian(measurement_model, [phi, theta, psi, pose_x, pose_y, pose_z]);
     % phi = roll, theta=pitch, psi=yaw
-    corrected_pose = [best_fit_pose_delta(4:6); flipud(best_fit_pose_delta(1:3))];
     S.pose = S.pose + best_fit_pose_delta;
     
     
     k = k + 1
    
-    pause(2);
+    pause(1);
    
 end
 
